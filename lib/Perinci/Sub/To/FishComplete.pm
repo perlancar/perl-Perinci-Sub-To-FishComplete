@@ -132,6 +132,6 @@ sub gen_fish_complete_from_meta {
 
 =head1 SEE ALSO
 
-This module is used by L<Perinci::CmdLine> and L<Getopt::Long::Complete>.
+This module is used by L<Perinci::CmdLine>.
 
 L<Complete::Fish::Gen::FromGetoptLong>.
