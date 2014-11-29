@@ -110,7 +110,7 @@ sub gen_fish_complete_from_meta {
             $cmd .= " -d ".shell_quote($ospec->{summary}) if $ospec->{summary};
 
             if ($req_arg) {
-                $cmd .= " -r -f -a ".shell_quote("(begin; set -lx COMP_OPT '$opt'; set -lx COMP_WORD (commandline -ct); ".shell_quote($cmdname)."; end)");
+                $cmd .= " -r -f -a ".shell_quote("(begin; set -lx COMP_SHELL fish; set -lx COMP_LINE (commandline); set -lx COMP_POINT (commandline -C); ".shell_quote($cmdname)."; end)");
             }
             push @cmds, $cmd;
         }
