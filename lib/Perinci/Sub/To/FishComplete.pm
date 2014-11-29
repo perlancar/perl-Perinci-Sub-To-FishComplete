@@ -7,7 +7,7 @@ use 5.010001;
 use strict;
 use warnings;
 
-use Perinci::Object;
+use String::ShellQuote;
 
 our %SPEC;
 
@@ -36,32 +36,37 @@ _
             summary => 'Will be passed to gen_getopt_long_spec_from_meta()',
             schema  => 'hash*',
         },
-        ggls_res => {
-            summary => 'Full result from gen_getopt_long_spec_from_meta()',
+        gco_res => {
+            summary => 'Full result from gen_cli_opt_spec_from_meta()',
             schema  => 'array*', # XXX envres
             description => <<'_',
 
-If you already call `Perinci::Sub::GetArgs::Argv`'s
-`gen_getopt_long_spec_from_meta()`, you can pass the _full_ enveloped result
-here, to avoid calculating twice. What will be useful for the function is the
-extra result in result metadata (`func.*` keys in `$res->[3]` hash).
+If you already call `Perinci::Sub::To::CLIOptSpec`'s
+`gen_cli_opt_spec_from_meta()`, you can pass the _full_ enveloped result here,
+to avoid calculating twice.
 
 _
         },
         per_arg_json => {
-            schema => 'bool',
             summary => 'Pass per_arg_json=1 to Perinci::Sub::GetArgs::Argv',
+            schema => 'bool',
         },
         per_arg_yaml => {
-            schema => 'bool',
             summary => 'Pass per_arg_json=1 to Perinci::Sub::GetArgs::Argv',
+            schema => 'bool',
         },
         lang => {
             schema => 'str*',
         },
+
+        cmdname => {
+            summary => 'Command name',
+            schema => 'str*',
+        },
     },
     result => {
-        schema => 'hash*',
+        schema => 'str*',
+        summary => 'A script that can be fed to the fish shell',
     },
 };
 sub gen_fish_complete_from_meta {
@@ -74,18 +79,42 @@ sub gen_fish_complete_from_meta {
         require Perinci::Sub::Normalize;
         $meta = Perinci::Sub::Normalize::normalize_function_metadata($meta);
     }
-    my $ggls_res = $args{ggls_res} // do {
-        require Perinci::Sub::GetArgs::Argv;
-        Perinci::Sub::GetArgs::Argv::gen_getopt_long_spec_from_meta(
+    my $gco_res = $args{gco_res} // do {
+        require Perinci::Sub::To::CLIOptSpec;
+        Perinci::Sub::To::CLIOptSpec::gen_cli_opt_spec_from_meta(
             meta=>$meta, meta_is_normalized=>1, common_opts=>$common_opts,
             per_arg_json => $args{per_arg_json},
             per_arg_yaml => $args{per_arg_yaml},
         );
     };
-    $ggls_res->[0] == 200 or return $ggls_res;
+    $gco_res->[0] == 200 or return $gco_res;
+    my $cliospec = $gco_res->[2];
 
-    my $args_prop = $meta->{args} // {};
+    my $cmdname = $args{cmdname};
+    if (!$cmdname) {
+        ($cmdname = $0) =~ s!.+/!!;
+    }
+
     my @cmds;
+    my $prefix = "complete -c ".shell_quote($cmdname);
+    push @cmds, "$prefix -e"; # currently does not work (fish bug)
+    for my $opt0 (sort keys %{ $cliospec->{opts} }) {
+        my $ospec = $cliospec->{opts}{$opt0};
+        my $req_arg;
+        for my $opt (split /, /, $opt0) {
+            $opt =~ s/^--?//;
+            $opt =~ s/=.+// and $req_arg = 1;
+
+            my $cmd = $prefix;
+            $cmd .= length($opt) > 1 ? " -l '$opt'" : " -s '$opt'";
+            $cmd .= " -d ".shell_quote($ospec->{summary}) if $ospec->{summary};
+
+            if ($req_arg) {
+                $cmd .= " -r -f -a ".shell_quote("(begin; set -lx COMP_OPT '$opt'; ".shell_quote($cmdname)."; end)");
+            }
+            push @cmds, $cmd;
+        }
+    }
 
     [200, "OK", join("", map {"$_\n"} @cmds)];
 }
@@ -103,6 +132,6 @@ sub gen_fish_complete_from_meta {
 
 =head1 SEE ALSO
 
-This module is used by L<Perinci::CmdLine>.
+This module is used by L<Perinci::CmdLine> and L<Getopt::Long::Complete>.
 
 L<Complete::Fish::Gen::FromGetoptLong>.
