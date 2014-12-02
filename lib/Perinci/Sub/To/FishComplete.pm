@@ -36,12 +36,12 @@ _
             summary => 'Will be passed to gen_getopt_long_spec_from_meta()',
             schema  => 'hash*',
         },
-        gco_res => {
-            summary => 'Full result from gen_cli_opt_spec_from_meta()',
+        gcd_res => {
+            summary => 'Full result from gen_cli_doc_data_from_meta()',
             schema  => 'array*', # XXX envres
             description => <<'_',
 
-If you already call `Perinci::Sub::To::CLIOptSpec`'s
+If you already call `Perinci::Sub::To::CLIDocData`'s
 `gen_cli_opt_spec_from_meta()`, you can pass the _full_ enveloped result here,
 to avoid calculating twice.
 
@@ -79,16 +79,16 @@ sub gen_fish_complete_from_meta {
         require Perinci::Sub::Normalize;
         $meta = Perinci::Sub::Normalize::normalize_function_metadata($meta);
     }
-    my $gco_res = $args{gco_res} // do {
-        require Perinci::Sub::To::CLIOptSpec;
-        Perinci::Sub::To::CLIOptSpec::gen_cli_opt_spec_from_meta(
+    my $gcd_res = $args{gcd_res} // do {
+        require Perinci::Sub::To::CLIDocData;
+        Perinci::Sub::To::CLIDocData::gen_cli_doc_data_from_meta(
             meta=>$meta, meta_is_normalized=>1, common_opts=>$common_opts,
             per_arg_json => $args{per_arg_json},
             per_arg_yaml => $args{per_arg_yaml},
         );
     };
-    $gco_res->[0] == 200 or return $gco_res;
-    my $cliospec = $gco_res->[2];
+    $gcd_res->[0] == 200 or return $gcd_res;
+    my $clidocdata = $gcd_res->[2];
 
     my $cmdname = $args{cmdname};
     if (!$cmdname) {
@@ -98,8 +98,8 @@ sub gen_fish_complete_from_meta {
     my @cmds;
     my $prefix = "complete -c ".shell_quote($cmdname);
     push @cmds, "$prefix -e"; # currently does not work (fish bug)
-    for my $opt0 (sort keys %{ $cliospec->{opts} }) {
-        my $ospec = $cliospec->{opts}{$opt0};
+    for my $opt0 (sort keys %{ $clidocdata->{opts} }) {
+        my $ospec = $clidocdata->{opts}{$opt0};
         my $req_arg;
         for my $opt (split /, /, $opt0) {
             $opt =~ s/^--?//;
