@@ -1,5 +1,12 @@
 Revision history for Perinci-Sub-To-FishComplete
 
+0.02    2014-12-02 (PERLANCAR)
+
+	- Switch Perinci::Sub::To::{CLIOptSpec,CLIDocData}.
+
+	- Correct See Also.
+
+
 0.01     2014-11-29 (PERLANCAR)
 
          - First release.
