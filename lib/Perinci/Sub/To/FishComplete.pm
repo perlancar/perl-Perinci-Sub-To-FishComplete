@@ -103,18 +103,72 @@ sub gen_fish_complete_from_meta {
         my $req_arg;
         for my $opt (split /, /, $opt0) {
             $opt =~ s/^--?//;
-            $opt =~ s/=.+// and $req_arg = 1;
+            $opt =~ s/=(.+)// and $req_arg = $1;
 
             my $cmd = $prefix;
             $cmd .= length($opt) > 1 ? " -l '$opt'" : " -s '$opt'";
             $cmd .= " -d ".shell_quote($ospec->{summary}) if $ospec->{summary};
 
-            if ($req_arg) {
-                $cmd .= " -r -f -a ".shell_quote("(begin; set -lx COMP_SHELL fish; set -lx COMP_LINE (commandline); set -lx COMP_POINT (commandline -C); ".shell_quote($cmdname)."; end)");
+          COMP_ARG_VAL:
+            {
+                last unless $req_arg;
+                $cmd .= " -r -f";
+                # check if completion is static, if yes then we can directly
+                # specify the entries to the shell
+                {
+                    require Perinci::Sub::Complete;
+
+                    my $compres;
+                    last if $ospec->{is_json} || $ospec->{is_yaml} ||
+                        $ospec->{is_base64};
+                    #say "D:Checking if $opt has static completion ...";
+                    if ($ospec->{arg}) {
+                        if ($req_arg =~ /\@/) {
+                            $compres =
+                                Perinci::Sub::Complete::complete_arg_elem(
+                                    arg=>$ospec->{arg}, ci=>1, index=>0,
+                                    meta=>$meta,
+                                );
+                        } else {
+                            $compres =
+                                Perinci::Sub::Complete::complete_arg_val(
+                                    arg=>$ospec->{arg}, ci=>1, meta=>$meta,
+                                );
+                        }
+                    } elsif ($ospec->{is_alias} &&
+                                 $ospec->{alias_spec}{schema}) {
+                        # cmdline alias which has schema
+                        require Data::Sah::Normalize;
+                        $compres = Perinci::Sub::Complete::complete_from_schema(
+                            ci=>1,
+                            schema=>Data::Sah::Normalize::normalize_schema($ospec->{alias_spec}{schema}),
+                        );
+                    } elsif ($ospec->{schema}) {
+                        # common opt which has schema
+                        require Data::Sah::Normalize;
+                        $compres = Perinci::Sub::Complete::complete_from_schema(
+                            ci=>1,
+                            schema=>Data::Sah::Normalize::normalize_schema($ospec->{schema}),
+                        );
+                    }
+
+                    last unless $compres;
+                    if ($compres->{static}) {
+                        # XXX description
+                        # XXX escape space
+                        my @words = map {ref($_) ? $_->{word}:$_}
+                            @{$compres->{words}};
+                        $cmd .= " -a ".shell_quote(join(" ", @words));
+                        last COMP_ARG_VAL;
+                    }
+                } # COMP_ARG_VAL
+                # completion is not static, delegate to the program when
+                # completing
+                $cmd .= " -a ".shell_quote("(begin; set -lx COMP_SHELL fish; set -lx COMP_LINE (commandline); set -lx COMP_POINT (commandline -C); ".shell_quote($cmdname)."; end)");
             }
             push @cmds, $cmd;
-        }
-    }
+        } # for opt
+    } # for opt0
 
     [200, "OK", join("", map {"$_\n"} @cmds)];
 }
