@@ -174,7 +174,7 @@ sub gen_fish_complete_from_meta {
 }
 
 1;
-# ABSTRACT: Generate tab completion commands for the fish shell
+# ABSTRACT:
 
 =head1 SYNOPSIS
 
