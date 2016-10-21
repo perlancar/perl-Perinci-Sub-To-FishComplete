@@ -184,6 +184,12 @@ sub gen_fish_complete_from_meta {
  say $res->[2];
 
 
+=head1 DESCRIPTION
+
+B<This module is no longer used.> See L<Complete::Fish::Gen::FromPerinciCmdLine>
+instead.
+
+
 =head1 SEE ALSO
 
 This module is used by L<Perinci::CmdLine>.
