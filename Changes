@@ -1,5 +1,3 @@
-Revision history for Perinci-Sub-To-FishComplete
-
 0.03    2015-09-04 (PERLANCAR)
 
         - [dist] Move spec prereqs from RuntimeRequires to DevelopRecommends to
